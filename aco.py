@@ -22,8 +22,8 @@ class Ant:
         total_distance = 0.0
         for i in range(1, len(self.seen_locations)):
             total_distance += distances[self.seen_locations[i-1]][self.seen_locations[i]]
-        start = self.seen_locations[i-1]
-        end = self.seen_locations[i]
+        start = self.seen_locations[-1]
+        end = self.seen_locations[0]
         # Droga powrotna do lokacji startowej
         total_distance += distances[start][end]
         return total_distance
@@ -89,6 +89,12 @@ def update_pheromones(pheromones : List[List[float]], distances : List[List[floa
                 # dodanie dla feromona oraz jego odwrotności, żeby zachować spójność
                 pheromones[u][v] += deposit
                 pheromones[v][u] += deposit
+
+            # domknięcie cyklu od ostatniego do pierwszego
+            u = path[-1]
+            v = path[0]
+            pheromones[u][v] += deposit
+            pheromones[v][u] += deposit
 
 def create_matrix_of_distances(pathfile):
     coordinates = []

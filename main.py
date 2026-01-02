@@ -114,6 +114,7 @@ def main():
             current_params[param_name] = val
             
             results = []
+            times = []
             best_path_in_series = None
             min_dist_in_series = float('inf')
 
@@ -121,11 +122,16 @@ def main():
             for run_idx in range(5):
                 dist, path, history, duration = run_experiment(distances, coords, current_params)
                 results.append(dist)
+                times.append(duration)
+
+                print(f"    Run {run_idx + 1}/5: dist={dist:.2f}, time={duration:.4f}s")
+
                 if dist < min_dist_in_series:
                     min_dist_in_series = dist
                     best_path_in_series = path
             
             mean_res = statistics.mean(results)
+            median_res = statistics.median(results)
             std_res = statistics.stdev(results) if len(results) > 1 else 0.0
             param_means.append(mean_res)
             param_stds.append(std_res)
@@ -133,7 +139,10 @@ def main():
                 best_path_in_experiment = best_path_in_series
                 min_dist_in_experiment = min_dist_in_series
 
-            print(f"  Wartość {val}: Średnia={mean_res:.2f}, Min={min(results):.2f}, Max={max(results):.2f}, Std={std_res:.2f}")
+            print(f"  Wartość {val}: Średnia={mean_res:.2f}, Median={median_res:.2f}"
+                  f", Min={min(results):.2f}, Max={max(results):.2f},"
+                  f" Std={std_res:.2f}")
+
 
         stats_results[param_name] = (values, param_means, param_stds)
 
@@ -157,7 +166,7 @@ def main():
     print("Zapisano: wyniki_analiza_parametrow.png")
 
     # Mapa najlepszej trasy spośród wszystkich eksperymentów
-    print("Generowanie mapy trasy dla parametrów bazowych...")
+    print("Generowanie mapy najlepszej trasy dla wszystkich eksperymentów...")
     plot_route(coords, best_path_in_experiment, f'Najlepsza trasa (dystans: {min_dist_in_experiment:.2f})', 'mapa_trasy.png')
     print("Zapisano: mapa_trasy.png")
 
