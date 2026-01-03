@@ -5,6 +5,8 @@ import time
 import matplotlib.pyplot as plt
 import statistics
 import os
+import csv
+from datetime import datetime
 
 def run_experiment(distances, coords, params):
     """
@@ -16,6 +18,7 @@ def run_experiment(distances, coords, params):
     
     best_global_dist = float('inf')
     best_global_path = []
+    iteration_best_distances = []
 
     start_time = time.time()
 
@@ -28,8 +31,7 @@ def run_experiment(distances, coords, params):
         for _ in range(n - 1):
             for ant in ants_colony:
                 ant.visit_next_location(distances, pheromones, params['alpha'], params['beta'], params['p_random'])
-        
-        iteration_best_distances = []
+
         # 2. Ewaluacja i wybór najlepszej mrówki w tej iteracji
         iteration_best = float('inf')
         for ant in ants_colony:
@@ -84,7 +86,7 @@ def plot_mean_of_runs_distances(means, params, title, filepath):
     plt.title(title + '\nm: ' + str(params['m']) + ', p_random: ' + str(params['p_random']) + ', alpha: ' + str(params['alpha']) + ', beta: ' + str(params['beta']) + ', T: ' + str(params['T']) + ', rho: ' + str(params['rho']))
     plt.xticks(x)
 
-    plt.errorbar(x, means, yerr=std, linestyle='--', fmt='-o', capsize=5, ecolor='red', color='blue')
+    plt.errorbar(x, means, yerr=std, linestyle='--', fmt='o', capsize=5, ecolor='red', color='blue')
     plt.xlabel('Numery uruchomień')
     plt.ylabel('Najkrótszy dystans')
     plt.grid(True)
@@ -141,7 +143,23 @@ def main():
     
     # Słownik na wyniki zbiorcze (do wykresów podsumowujących)
     # Klucz: nazwa parametru -> (wartości_x, średnie_y, błędy_y, średnie_czasy)
-    stats_summary = {} 
+    stats_summary = {}
+
+    run_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
+    summary_csv_path = os.path.join(output_dir, f"summary_{run_tag}.csv")
+    summary_file = open(summary_csv_path, "w", newline="", encoding="utf-8")
+    summary_writer = csv.writer(summary_file, delimiter=";")
+
+    summary_writer.writerow([
+        "Badany parametr",
+        "Wartosc parametru",
+        "Sredni dystans",
+        "Mediana",
+        "Najkrotsza trasa",
+        "Najdluzsza trasa",
+        "Odchylenie standardowe",
+        "Sredni czas"
+    ])
 
     print("\nRozpoczynam serię eksperymentów...")
 
@@ -166,7 +184,7 @@ def main():
             best_batch_dist = float('inf')
             best_batch_path = None
 
-            print(f"  Scenariusz {param_name} = {val}...", end="", flush=True)
+            print(f" Scenariusz {param_name} = {val}")
 
             # 2. Wykonanie 5 powtórzeń
             for i in range(5):
@@ -181,7 +199,32 @@ def main():
                     best_batch_dist = dist
                     best_batch_path = path
 
-            print(f" Gotowe. (Śr. dystans: {statistics.mean(runs_distances):.2f})")
+                print(f" Run {i + 1}/5: dist={dist:.2f}, time={duration:.4f}s")
+
+            # statystyki po 5 uruchomieniach
+            mean_res = statistics.mean(runs_distances)
+            median_res = statistics.median(runs_distances)
+            std_res = statistics.stdev(runs_distances) if len(runs_distances) > 1 else 0.0
+            min_res = min(runs_distances)  # najlepszy
+            max_res = max(runs_distances)  # najgorszy
+            mean_time = statistics.mean(runs_times)
+
+            print(f"| Wartość parametru {val} | Średni dystans = {mean_res:.2f} | Mediana = {median_res:.2f}"
+                f" | Najkrótsza trasa = {min_res:.2f} | Najdłuższa trasa = {max_res:.2f} |"
+                  f" Odchylenie st. = {std_res:.2f} | Średni czas = {mean_time:.4f}s "
+            )
+
+            # Zapis do pliku csv (ułatwi sprawko)
+            summary_writer.writerow([
+                param_name,
+                val,
+                f"{mean_res:.2f}",
+                f"{median_res:.2f}",
+                f"{min_res:.2f}",
+                f"{max_res:.2f}",
+                f"{std_res:.2f}",
+                f"{mean_time:.4f}",
+            ])
 
             # 3. GENEROWANIE WYKRESÓW DLA SCENARIUSZA
             # Mapa najlepszej trasy w tej serii
@@ -204,6 +247,9 @@ def main():
 
         # Zapisanie zbiorczych danych
         stats_summary[param_name] = (values, agg_means_dist, agg_stds_dist, agg_means_time)
+
+    summary_file.close()
+    print(f"\nZapisano podsumowanie do: {summary_csv_path}")
 
     # --- GENEROWANIE RAPORTU ZBIORCZEGO ---
     print("\nGenerowanie wykresów podsumowujących...")
